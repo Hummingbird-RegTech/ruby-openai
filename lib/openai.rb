@@ -40,15 +40,9 @@ module OpenAI
   end
 
   class Configuration
-    attr_accessor :access_token,
-                  :admin_token,
-                  :api_type,
-                  :api_version,
-                  :log_errors,
-                  :organization_id,
-                  :uri_base,
-                  :request_timeout,
-                  :extra_headers
+    attr_accessor :access_token, :admin_token, :api_type, :api_version, :log_errors, :organization_id, :uri_base,
+                  :request_timeout, :extra_headers
+    attr_reader :azure_token_provider
 
     DEFAULT_API_VERSION = "v1".freeze
     DEFAULT_URI_BASE = "https://api.openai.com/".freeze
@@ -65,6 +59,16 @@ module OpenAI
       @uri_base = DEFAULT_URI_BASE
       @request_timeout = DEFAULT_REQUEST_TIMEOUT
       @extra_headers = {}
+      @azure_token_provider = nil
+    end
+
+    def azure_token_provider=(provider)
+      unless provider.nil? || (provider.is_a?(Proc) && provider.arity.zero?)
+        raise ConfigurationError,
+              "OpenAI Azure AD token provider must be a Proc that takes no arguments"
+      end
+
+      @azure_token_provider = provider
     end
   end
 

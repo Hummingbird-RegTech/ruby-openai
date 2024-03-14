@@ -72,6 +72,62 @@ RSpec.describe OpenAI::HTTP do
           expect(parameters[:stream]).to eq(stream)
         end
       end
+
+      context "with azure_token_provider" do
+        around do |example|
+          access_token_before = OpenAI.configuration.access_token
+          OpenAI.configuration.access_token = nil
+          example.run
+        ensure
+          OpenAI.configuration.access_token = access_token_before
+        end
+
+        let(:token_provider) do
+          counter = 0
+          lambda do
+            counter += 1
+            "some dynamic token #{counter}"
+          end
+        end
+
+        let(:client) do
+          OpenAI::Client.new(
+            access_token: nil,
+            azure_token_provider: token_provider,
+            api_type: :azure,
+            uri_base: "https://custom-domain.openai.azure.com/openai/deployments/gpt-35-turbo",
+            api_version: "2024-02-01"
+          )
+        end
+
+        let(:cassette) { "http json post with azure token provider" }
+
+        it "calls the token provider on every request" do
+          expect(token_provider).to receive(:call).twice.and_call_original
+          VCR.use_cassette(cassette, record: :none) do
+            client.chat(
+              parameters: {
+                messages: [
+                  {
+                    "role" => "user",
+                    "content" => "Hello world!"
+                  }
+                ]
+              }
+            )
+            client.chat(
+              parameters: {
+                messages: [
+                  {
+                    "role" => "user",
+                    "content" => "Who were the founders of Microsoft?"
+                  }
+                ]
+              }
+            )
+          end
+        end
+      end
     end
 
     describe ".multipart_post" do
@@ -225,6 +281,28 @@ RSpec.describe OpenAI::HTTP do
         expect(headers).to have_key("Content-Type")
         expect(headers["Content-Type"]).to eq("application/json")
       end
+    end
+
+    context "with azure_token_provider" do
+      let(:token) { "some dynamic token" }
+      let(:token_provider) { -> { token } }
+
+      around do |ex|
+        old_access_token = OpenAI.configuration.access_token
+        OpenAI.configuration.access_token = nil
+        OpenAI.configuration.azure_token_provider = token_provider
+
+        ex.call
+      ensure
+        OpenAI.configuration.azure_token_provider = nil
+        OpenAI.configuration.access_token = old_access_token
+      end
+
+      it {
+        expect(token_provider).to receive(:call).once.and_call_original
+        expect(headers).to eq({ "Content-Type" => "application/json",
+                                "Authorization" => "Bearer #{token}" })
+      }
     end
   end
 

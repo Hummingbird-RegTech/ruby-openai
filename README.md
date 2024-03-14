@@ -268,6 +268,22 @@ end
 
 where `AZURE_OPENAI_URI` is e.g. `https://custom-domain.openai.azure.com/openai/deployments/gpt-35-turbo`
 
+##### Azure with Azure AD tokens
+
+To use Azure AD tokens you can configure the gem with a proc like this:
+
+```ruby
+    OpenAI.configure do |config|
+        config.azure_token_provider = ->() { your_code_caches_or_refreshes_token }
+        config.uri_base = ENV.fetch("AZURE_OPENAI_URI")
+        config.api_type = :azure
+        config.api_version = "2023-03-15-preview"
+    end
+```
+
+The azure_token_provider will be called on every request. This allows tokens to be cached and periodically refreshed by your custom code.
+
+
 #### Deepseek
 
 [Deepseek](https://api-docs.deepseek.com/) is compatible with the OpenAI chat API. Get an access token from [here](https://platform.deepseek.com/api_keys), then:
