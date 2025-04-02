@@ -134,6 +134,16 @@ module OpenAI
       end
     end
 
+    def inspect
+      vars = instance_variables.map do |var|
+        value = instance_variable_get(var)
+
+        SENSITIVE_ATTRIBUTES.include?(var) ? "#{var}=[REDACTED]" : "#{var}=#{value.inspect}"
+      end
+
+      "#<#{self.class}:#{object_id} #{vars.join(', ')}>"
+    end
+
     private
 
     def validate_credential_config!
@@ -157,16 +167,6 @@ module OpenAI
       end
 
       @azure_token_provider = @azure_token_provider&.to_proc
-    end
-
-    def inspect
-      vars = instance_variables.map do |var|
-        value = instance_variable_get(var)
-
-        SENSITIVE_ATTRIBUTES.include?(var) ? "#{var}=[REDACTED]" : "#{var}=#{value.inspect}"
-      end
-
-      "#<#{self.class}:#{object_id} #{vars.join(', ')}>"
     end
   end
 end
