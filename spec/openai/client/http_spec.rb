@@ -122,6 +122,14 @@ RSpec.describe OpenAI::HTTP do
 
   describe ".json_post" do
     context "with azure_token_provider" do
+      around do |example|
+        access_token_before = OpenAI.configuration.access_token
+        OpenAI.configuration.access_token = nil
+        example.run
+      ensure
+        OpenAI.configuration.access_token = access_token_before
+      end
+
       let(:token_provider) do
         counter = 0
         lambda do
