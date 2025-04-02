@@ -3,16 +3,20 @@ module OpenAI
   class Client
     include OpenAI::HTTP
 
-    SENSITIVE_ATTRIBUTES = %i[@access_token @admin_token @organization_id @extra_headers].freeze
-    CONFIG_KEYS = %i[access_token
-     admin_token
-     api_type
-     api_version
-     extra_headers
-     log_errors
-     organization_id
-     request_timeout
-     uri_base].freeze
+    SENSITIVE_ATTRIBUTES = %i[@access_token @admin_token @organization_id @extra_headers @azure_token_provider].freeze
+    CONFIG_KEYS = %i[
+      api_type
+      api_version
+      admin_token
+      access_token
+      organization_id
+      uri_base
+      request_timeout
+      extra_headers
+      log_errors
+      azure_token_provider
+    ].freeze
+
     attr_reader *CONFIG_KEYS, :faraday_middleware
     attr_writer :access_token
 
