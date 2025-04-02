@@ -176,6 +176,133 @@ RSpec.describe OpenAI::HTTP do
     end
   end
 
+  describe ".json_post" do
+    context "with azure_token_provider" do
+      around do |example|
+        access_token_before = OpenAI.configuration.access_token
+        OpenAI.configuration.access_token = nil
+        example.run
+      ensure
+        OpenAI.configuration.access_token = access_token_before
+      end
+
+      let(:token_provider) do
+        counter = 0
+        lambda do
+          counter += 1
+          "some dynamic token #{counter}"
+        end
+      end
+
+      let(:client) do
+        OpenAI::Client.new(
+          access_token: nil,
+          azure_token_provider: token_provider,
+          api_type: :azure,
+          uri_base: "https://custom-domain.openai.azure.com/openai/deployments/gpt-35-turbo",
+          api_version: "2024-02-01"
+        )
+      end
+
+      let(:cassette) { "http json post with azure token provider" }
+
+      it "calls the token provider on every request" do
+        expect(token_provider).to receive(:call).twice.and_call_original
+        VCR.use_cassette(cassette, record: :none) do
+          client.chat(
+            parameters: {
+              messages: [
+                {
+                  "role" => "user",
+                  "content" => "Hello world!"
+                }
+              ]
+            }
+          )
+          client.chat(
+            parameters: {
+              messages: [
+                {
+                  "role" => "user",
+                  "content" => "Who were the founders of Microsoft?"
+                }
+              ]
+            }
+          )
+        end
+      end
+    end
+  end
+
+  describe ".to_json_stream" do
+    context "with a proc" do
+      let(:user_proc) { proc { |x| x } }
+      let(:stream) { OpenAI::Client.new.send(:to_json_stream, user_proc: user_proc) }
+
+      it "returns a proc" do
+        expect(stream).to be_a(Proc)
+      end
+
+      context "when called with a string containing a single JSON object" do
+        it "calls the user proc with the data parsed as JSON" do
+          expect(user_proc).to receive(:call).with(JSON.parse('{"foo": "bar"}'))
+          stream.call(<<~CHUNK)
+            data: { "foo": "bar" }
+
+            #
+          CHUNK
+        end
+      end
+
+      context "when called with a string containing more than one JSON object" do
+        it "calls the user proc for each data parsed as JSON" do
+          expect(user_proc).to receive(:call).with(JSON.parse('{"foo": "bar"}'))
+          expect(user_proc).to receive(:call).with(JSON.parse('{"baz": "qud"}'))
+
+          stream.call(<<~CHUNK)
+            data: { "foo": "bar" }
+
+            data: { "baz": "qud" }
+
+            data: [DONE]
+
+            #
+          CHUNK
+        end
+      end
+
+      context "when called with string containing invalid JSON" do
+        let(:chunk) do
+          <<~CHUNK
+            data: { "foo": "bar" }
+
+            data: NOT JSON
+
+            #
+          CHUNK
+        end
+
+        it "raise an error" do
+          expect(user_proc).to receive(:call).with(JSON.parse('{"foo": "bar"}'))
+
+          expect do
+            stream.call(chunk)
+          end.to raise_error(JSON::ParserError)
+        end
+      end
+
+      context "when called with JSON split across chunks" do
+        it "calls the user proc with the data parsed as JSON" do
+          expect(user_proc).to receive(:call).with(JSON.parse('{ "foo": "bar" }'))
+          expect do
+            stream.call("data: { \"foo\":")
+            stream.call(" \"bar\" }\n\n")
+          end.not_to raise_error
+        end
+      end
+    end
+  end
+
   describe ".parse_json" do
     context "with a jsonl string" do
       let(:body) { "{\"prompt\":\":)\"}\n{\"prompt\":\":(\"}\n" }
