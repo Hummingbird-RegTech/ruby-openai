@@ -40,9 +40,9 @@ module OpenAI
   end
 
   class Configuration
-    attr_accessor :access_token, :admin_token, :api_type, :api_version, :log_errors, :organization_id, :uri_base,
-                  :request_timeout, :extra_headers, :azure_token_provider
-    attr_reader :azure_token_provider
+    attr_accessor :access_token, :admin_token, :api_type, :api_version, :log_errors,
+                  :organization_id, :uri_base, :request_timeout, :extra_headers,
+                  :azure_token_provider
 
     DEFAULT_API_VERSION = "v1".freeze
     DEFAULT_URI_BASE = "https://api.openai.com/".freeze
