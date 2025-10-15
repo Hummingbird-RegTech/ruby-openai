@@ -74,6 +74,12 @@ RSpec.describe OpenAI::HTTP do
       end
 
       context "with azure_token_provider" do
+        before do
+          VCR.turn_on!
+          WebMock.disable_net_connect!
+          OpenAI.configuration.request_timeout = OpenAI::Configuration::DEFAULT_REQUEST_TIMEOUT
+        end
+
         around do |example|
           access_token_before = OpenAI.configuration.access_token
           OpenAI.configuration.access_token = nil
